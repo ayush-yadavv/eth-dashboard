@@ -35,17 +35,23 @@ export async function GET() {
       return Response.json({ error: taskError.message }, { status: 500 });
     }
 
-    const typedTasks = (tasks ?? []) as DashboardTask[];
-    const openTasks = typedTasks.filter((task) => task.status !== "finish");
-    const completedTasks = typedTasks.filter((task) => task.status === "finish");
-    const overdueTasks = typedTasks.filter((task) => task.status !== "finish" && isOverdue(task.due_date));
-    const assignedToMe = typedTasks.filter((task) => task.assignee_user_id === user.id);
+    const roleByProjectId = new Map((memberships ?? []).map((membership) => [membership.project_id, membership.role]));
+    const visibleTasks = ((tasks ?? []) as DashboardTask[]).filter((task) => {
+      const role = roleByProjectId.get(task.project_id);
+      if (!role) return false;
+      return role === "admin" || task.assignee_user_id === user.id;
+    });
+
+    const openTasks = visibleTasks.filter((task) => task.status !== "finish");
+    const completedTasks = visibleTasks.filter((task) => task.status === "finish");
+    const overdueTasks = visibleTasks.filter((task) => task.status !== "finish" && isOverdue(task.due_date));
+    const assignedToMe = visibleTasks.filter((task) => task.assignee_user_id === user.id);
     const dueSoon = openTasks
       .filter((task) => task.due_date !== null)
       .slice(0, 8);
 
     const projectSummaries = (memberships ?? []).map((membership) => {
-      const projectTasks = typedTasks.filter((task) => task.project_id === membership.project_id);
+      const projectTasks = visibleTasks.filter((task) => task.project_id === membership.project_id);
       const done = projectTasks.filter((task) => task.status === "finish").length;
       const total = projectTasks.length;
       const progress = total === 0 ? 0 : Math.round((done / total) * 100);

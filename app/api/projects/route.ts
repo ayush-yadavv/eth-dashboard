@@ -5,10 +5,11 @@ import { projectCreateSchema } from "@/lib/validation/schemas";
 
 export async function GET() {
   try {
-    const { supabase } = await requireUser();
+    const { supabase, user } = await requireUser();
     const { data, error } = await supabase
       .from("project_members")
       .select("role,project:projects!inner(id,name,description,created_by,created_at,updated_at)")
+      .eq("user_id", user.id)
       .order("joined_at", { ascending: false });
 
     if (error) {

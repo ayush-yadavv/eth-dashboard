@@ -8,13 +8,19 @@ type Params = { params: Promise<{ projectId: string }> };
 export async function GET(_: Request, { params }: Params) {
   try {
     const { projectId } = await params;
-    const { supabase } = await requireProjectRole(projectId, "member");
+    const { supabase, user, role } = await requireProjectRole(projectId, "member");
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("tasks")
       .select("id,project_id,title,description,status,due_date,assignee_user_id,created_by,created_at,updated_at")
       .eq("project_id", projectId)
       .order("created_at", { ascending: false });
+
+    if (role === "member") {
+      query = query.eq("assignee_user_id", user.id);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
@@ -30,7 +36,7 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const { projectId } = await params;
     const payload = await parseJsonBody(request, createTaskSchema);
-    const { supabase, user } = await requireProjectRole(projectId, "member");
+    const { supabase, user } = await requireProjectRole(projectId, "admin");
 
     if (payload.assigneeUserId) {
       const { data: assignee, error: assigneeError } = await supabase
