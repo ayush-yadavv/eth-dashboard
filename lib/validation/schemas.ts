@@ -46,7 +46,7 @@ const isoDateSchema = z
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2000).nullable().optional(),
-  status: z.enum(["start", "hold_pause", "finish"]).default("start"),
+  status: z.enum(["start", "hold_pause", "finish", "todo", "in_progress", "done"]).default("start"),
   dueDate: isoDateSchema.nullable().optional(),
   assigneeUserId: z.string().uuid().nullable().optional(),
 });
@@ -54,7 +54,7 @@ export const createTaskSchema = z.object({
 export const updateTaskSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().max(2000).nullable().optional(),
-  status: z.enum(["start", "hold_pause", "finish"]).optional(),
+  status: z.enum(["start", "hold_pause", "finish", "todo", "in_progress", "done"]).optional(),
   dueDate: isoDateSchema.nullable().optional(),
   assigneeUserId: z.string().uuid().nullable().optional(),
 });

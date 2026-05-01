@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 
 type Member = {
@@ -50,6 +53,7 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
   const [memberRole, setMemberRole] = useState<"admin" | "member">("member");
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
 
   const memberNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -171,12 +175,15 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
 
     if (!response.ok) {
       setError(result.error ?? "Could not add member");
+      toast.error(result.error ?? "Could not add member");
       return;
     }
 
     setInviteLink(result.action === "invited" ? result.invitation?.invitePath ?? null : null);
+    toast.success(result.action === "invited" ? "Invite created" : "Member added");
     setMemberEmail("");
     setMemberRole("member");
+    setIsAddMemberDialogOpen(false);
     await load();
   }
 
@@ -189,8 +196,10 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
     const result = (await response.json()) as { error?: string };
     if (!response.ok) {
       setError(result.error ?? "Could not update role");
+      toast.error(result.error ?? "Could not update role");
       return;
     }
+    toast.success("Member role updated");
     await load();
   }
 
@@ -201,8 +210,10 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
     const result = (await response.json()) as { error?: string };
     if (!response.ok) {
       setError(result.error ?? "Could not remove member");
+      toast.error(result.error ?? "Could not remove member");
       return;
     }
+    toast.success("Member removed");
     await load();
   }
 
@@ -245,29 +256,50 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
       {error ? <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}
 
       <section className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-lg font-semibold">Add member</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Existing users are added directly. Unknown emails receive an invite email.
-        </p>
-        <form onSubmit={addMember} className="mt-3 grid gap-3 md:grid-cols-3">
-          <Input
-            className="h-10 md:col-span-2"
-            value={memberEmail}
-            onChange={(event) => setMemberEmail(event.target.value)}
-            type="email"
-            placeholder="member@email.com"
-            required
-          />
-          <select
-            value={memberRole}
-            onChange={(event) => setMemberRole(event.target.value as "admin" | "member")}
-            className="rounded-md border border-input bg-background px-3 py-2"
-          >
-            <option value="member">Member</option>
-            <option value="admin">Admin</option>
-          </select>
-          <Button className="h-10 md:col-span-3">Add member</Button>
-        </form>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold">Add member</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Existing users are added directly. Unknown emails receive an invite email.
+            </p>
+          </div>
+          <Dialog open={isAddMemberDialogOpen} onOpenChange={setIsAddMemberDialogOpen}>
+            <DialogTrigger render={<Button />}>Add Member</DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add member</DialogTitle>
+                <DialogDescription>Add existing user or create invite for new email.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={addMember} className="space-y-3">
+                <Input
+                  className="h-10"
+                  value={memberEmail}
+                  onChange={(event) => setMemberEmail(event.target.value)}
+                  type="email"
+                  placeholder="member@email.com"
+                  required
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button variant="outline" type="button" className="w-full justify-between">
+                        <span>{memberRole === "admin" ? "Admin" : "Member"}</span>
+                        <ChevronDown className="size-4 opacity-70" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => setMemberRole("member")}>Member</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setMemberRole("admin")}>Admin</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DialogFooter>
+                  <Button type="submit">Add member</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
         {inviteLink ? (
           <p className="mt-3 rounded-md bg-secondary px-3 py-2 text-sm">
             Invite sent. Link: <code>{inviteLink}</code>
@@ -283,15 +315,21 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>{(member.profiles?.full_name || member.profiles?.email || member.user_id) + ` (${member.role})`}</span>
                 <div className="flex items-center gap-2">
-                  <select
-                    value={member.role}
-                    disabled={currentUserId === member.user_id}
-                    onChange={(event) => void updateMemberRole(member.user_id, event.target.value as "admin" | "member")}
-                    className="rounded border border-input bg-background px-2 py-1 text-xs"
-                  >
-                    <option value="member">member</option>
-                    <option value="admin">admin</option>
-                  </select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={currentUserId === member.user_id}
+                      render={
+                        <Button variant="outline" size="xs" type="button" className="justify-between">
+                          <span>{member.role}</span>
+                          <ChevronDown className="size-3.5 opacity-70" />
+                        </Button>
+                      }
+                    />
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => void updateMemberRole(member.user_id, "member")}>member</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => void updateMemberRole(member.user_id, "admin")}>admin</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="outline"
                     onClick={() => setMemberToRemove(member)}

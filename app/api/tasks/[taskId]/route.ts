@@ -2,6 +2,7 @@ import { ApiError } from "@/lib/api/errors";
 import { handleRouteError, ok, parseJsonBody } from "@/lib/api/http";
 import { requireUser } from "@/lib/auth/context";
 import { canManageProject, canUpdateTask } from "@/lib/auth/permissions";
+import { toDbTaskStatus, toUiTaskStatus } from "@/lib/task-status";
 import { updateTaskSchema } from "@/lib/validation/schemas";
 
 type Params = { params: Promise<{ taskId: string }> };
@@ -76,7 +77,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const updatePayload: Record<string, string | null> = {};
     if (payload.title !== undefined) updatePayload.title = payload.title;
     if (payload.description !== undefined) updatePayload.description = payload.description;
-    if (payload.status !== undefined) updatePayload.status = payload.status;
+    if (payload.status !== undefined) updatePayload.status = toDbTaskStatus(payload.status);
     if (payload.dueDate !== undefined) updatePayload.due_date = payload.dueDate;
     if (payload.assigneeUserId !== undefined) updatePayload.assignee_user_id = payload.assigneeUserId;
 
@@ -95,7 +96,12 @@ export async function PATCH(request: Request, { params }: Params) {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    return ok({ task: data });
+    return ok({
+      task: {
+        ...data,
+        status: toUiTaskStatus(data.status as never),
+      },
+    });
   } catch (error) {
     return handleRouteError(error);
   }

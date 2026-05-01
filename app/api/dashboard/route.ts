@@ -1,12 +1,13 @@
 import { handleRouteError, ok } from "@/lib/api/http";
 import { requireUser } from "@/lib/auth/context";
 import { isOverdue } from "@/lib/date";
+import { toUiTaskStatus } from "@/lib/task-status";
 
 type DashboardTask = {
   id: string;
   title: string;
   due_date: string | null;
-  status: "start" | "hold_pause" | "finish";
+  status: "start" | "hold_pause" | "finish" | "todo" | "in_progress" | "done";
   project_id: string;
   assignee_user_id: string | null;
 };
@@ -36,7 +37,10 @@ export async function GET() {
     }
 
     const roleByProjectId = new Map((memberships ?? []).map((membership) => [membership.project_id, membership.role]));
-    const visibleTasks = ((tasks ?? []) as DashboardTask[]).filter((task) => {
+    const visibleTasks = ((tasks ?? []) as DashboardTask[]).map((task) => ({
+      ...task,
+      status: toUiTaskStatus(task.status as never),
+    })).filter((task) => {
       const role = roleByProjectId.get(task.project_id);
       if (!role) return false;
       return role === "admin" || task.assignee_user_id === user.id;

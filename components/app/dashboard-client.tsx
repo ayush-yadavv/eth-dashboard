@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 type DashboardData = {
@@ -30,6 +32,7 @@ export function DashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [isCreateProjectDialogOpen, setIsCreateProjectDialogOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -86,11 +89,14 @@ export function DashboardClient() {
     if (!response.ok) {
       const result = (await response.json()) as { error?: string };
       setError(result.error ?? "Project creation failed");
+      toast.error(result.error ?? "Project creation failed");
       return;
     }
 
     setNewProjectName("");
     setNewProjectDescription("");
+    toast.success("Project created");
+    setIsCreateProjectDialogOpen(false);
     void load();
   }
 
@@ -112,27 +118,40 @@ export function DashboardClient() {
       </section>
 
       <section className="rounded-xl border border-border bg-card p-4">
-        <h2 className="text-lg font-semibold">Create project</h2>
-        <form className="mt-3 grid gap-3 md:grid-cols-3" onSubmit={onCreateProject}>
-          <Input
-            className="h-10"
-            placeholder="Project name"
-            value={newProjectName}
-            onChange={(event) => setNewProjectName(event.target.value)}
-            required
-          />
-          <Input
-            className="h-10"
-            placeholder="Description"
-            value={newProjectDescription}
-            onChange={(event) => setNewProjectDescription(event.target.value)}
-          />
-          <Button className="h-10">Create</Button>
-        </form>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Projects</h2>
+          <Dialog open={isCreateProjectDialogOpen} onOpenChange={setIsCreateProjectDialogOpen}>
+            <DialogTrigger render={<Button />}>Create Project</DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create project</DialogTitle>
+                <DialogDescription>Create a new project workspace for your team.</DialogDescription>
+              </DialogHeader>
+              <form className="space-y-3" onSubmit={onCreateProject}>
+                <Input
+                  className="h-10"
+                  placeholder="Project name"
+                  value={newProjectName}
+                  onChange={(event) => setNewProjectName(event.target.value)}
+                  required
+                />
+                <Input
+                  className="h-10"
+                  placeholder="Description"
+                  value={newProjectDescription}
+                  onChange={(event) => setNewProjectDescription(event.target.value)}
+                />
+                <DialogFooter>
+                  <Button type="submit">Create</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </section>
 
       <section className="rounded-xl border border-border bg-card p-4">
-        <h2 className="text-lg font-semibold">Projects</h2>
+        <h2 className="text-lg font-semibold">Project list</h2>
         <div className="mt-3 space-y-3">
           {data.projects.length === 0 ? <p className="text-sm text-muted-foreground">No projects yet.</p> : null}
           {data.projects.map((item) => (
