@@ -15,7 +15,31 @@ export async function GET() {
       return Response.json({ error: error.message }, { status: 500 });
     }
 
-    return ok({ projects: data ?? [] });
+    type ProjectNav = {
+      role: "admin" | "member";
+      project: { id: string; name: string };
+    };
+
+    const dedupedProjects = new Map<string, ProjectNav>();
+    for (const item of (data ?? []) as Array<{ role: "admin" | "member"; project: unknown }>) {
+      const projectRecord = Array.isArray(item.project) ? item.project[0] : item.project;
+      if (!projectRecord || typeof projectRecord !== "object") {
+        continue;
+      }
+      const project = projectRecord as { id?: string; name?: string };
+      if (!project.id || !project.name) {
+        continue;
+      }
+      const existing = dedupedProjects.get(project.id);
+      if (!existing || item.role === "admin") {
+        dedupedProjects.set(project.id, {
+          role: item.role,
+          project: { id: project.id, name: project.name },
+        });
+      }
+    }
+
+    return ok({ projects: Array.from(dedupedProjects.values()) });
   } catch (error) {
     return handleRouteError(error);
   }
