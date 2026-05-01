@@ -445,56 +445,58 @@ export function ProjectClient({ projectId }: { projectId: string }) {
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Tasks</h2>
-          <Dialog open={isCreateTaskDialogOpen} onOpenChange={setIsCreateTaskDialogOpen}>
-            <DialogTrigger
-              render={<Button />}
-              onClick={openCreateTaskDialog}
-            >
-              Create Task
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Create task</DialogTitle>
-                <DialogDescription>Add a task and assign it to a team member.</DialogDescription>
-              </DialogHeader>
-              <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateTask}>
-                <input
-                  value={taskTitle}
-                  onChange={(event) => setTaskTitle(event.target.value)}
-                  placeholder="Task title"
-                  className="rounded-md border border-input bg-background px-3 py-2"
-                  required
-                />
-                <select
-                  value={taskAssignee}
-                  onChange={(event) => setTaskAssignee(event.target.value)}
-                  className="rounded-md border border-input bg-background px-3 py-2"
-                >
-                  <option value="">Unassigned</option>
-                  {members.map((member) => (
-                    <option key={member.user_id} value={member.user_id}>
-                      {member.profiles?.full_name || member.profiles?.email || member.user_id}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={taskDescription}
-                  onChange={(event) => setTaskDescription(event.target.value)}
-                  placeholder="Description"
-                  className="rounded-md border border-input bg-background px-3 py-2 md:col-span-2"
-                />
-                <input
-                  type="date"
-                  value={taskDueDate}
-                  onChange={(event) => setTaskDueDate(event.target.value)}
-                  className="rounded-md border border-input bg-background px-3 py-2"
-                />
-                <DialogFooter className="md:col-span-2">
-                  <Button type="submit">Add task</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {isAdmin ? (
+            <Dialog open={isCreateTaskDialogOpen} onOpenChange={setIsCreateTaskDialogOpen}>
+              <DialogTrigger
+                render={<Button />}
+                onClick={openCreateTaskDialog}
+              >
+                Create Task
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Create task</DialogTitle>
+                  <DialogDescription>Add a task and assign it to a team member.</DialogDescription>
+                </DialogHeader>
+                <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateTask}>
+                  <input
+                    value={taskTitle}
+                    onChange={(event) => setTaskTitle(event.target.value)}
+                    placeholder="Task title"
+                    className="rounded-md border border-input bg-background px-3 py-2"
+                    required
+                  />
+                  <select
+                    value={taskAssignee}
+                    onChange={(event) => setTaskAssignee(event.target.value)}
+                    className="rounded-md border border-input bg-background px-3 py-2"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map((member) => (
+                      <option key={member.user_id} value={member.user_id}>
+                        {member.profiles?.full_name || member.profiles?.email || member.user_id}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={taskDescription}
+                    onChange={(event) => setTaskDescription(event.target.value)}
+                    placeholder="Description"
+                    className="rounded-md border border-input bg-background px-3 py-2 md:col-span-2"
+                  />
+                  <input
+                    type="date"
+                    value={taskDueDate}
+                    onChange={(event) => setTaskDueDate(event.target.value)}
+                    className="rounded-md border border-input bg-background px-3 py-2"
+                  />
+                  <DialogFooter className="md:col-span-2">
+                    <Button type="submit">Add task</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          ) : null}
         </div>
       </section>
 
