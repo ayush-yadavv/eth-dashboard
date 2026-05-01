@@ -1,5 +1,5 @@
 export type ProjectRole = "admin" | "member";
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = "start" | "hold_pause" | "finish";
 
 export type Profile = {
   id: string;

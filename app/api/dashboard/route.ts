@@ -6,7 +6,7 @@ type DashboardTask = {
   id: string;
   title: string;
   due_date: string | null;
-  status: "todo" | "in_progress" | "done";
+  status: "start" | "hold_pause" | "finish";
   project_id: string;
   assignee_user_id: string | null;
 };
@@ -36,9 +36,9 @@ export async function GET() {
     }
 
     const typedTasks = (tasks ?? []) as DashboardTask[];
-    const openTasks = typedTasks.filter((task) => task.status !== "done");
-    const completedTasks = typedTasks.filter((task) => task.status === "done");
-    const overdueTasks = typedTasks.filter((task) => task.status !== "done" && isOverdue(task.due_date));
+    const openTasks = typedTasks.filter((task) => task.status !== "finish");
+    const completedTasks = typedTasks.filter((task) => task.status === "finish");
+    const overdueTasks = typedTasks.filter((task) => task.status !== "finish" && isOverdue(task.due_date));
     const assignedToMe = typedTasks.filter((task) => task.assignee_user_id === user.id);
     const dueSoon = openTasks
       .filter((task) => task.due_date !== null)
@@ -46,7 +46,7 @@ export async function GET() {
 
     const projectSummaries = (memberships ?? []).map((membership) => {
       const projectTasks = typedTasks.filter((task) => task.project_id === membership.project_id);
-      const done = projectTasks.filter((task) => task.status === "done").length;
+      const done = projectTasks.filter((task) => task.status === "finish").length;
       const total = projectTasks.length;
       const progress = total === 0 ? 0 : Math.round((done / total) * 100);
 

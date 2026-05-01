@@ -17,7 +17,7 @@ type Task = {
   id: string;
   title: string;
   description: string | null;
-  status: "todo" | "in_progress" | "done";
+  status: "start" | "hold_pause" | "finish";
   due_date: string | null;
   assignee_user_id: string | null;
 };
@@ -51,6 +51,12 @@ function formatDuration(fromIso: string, toIso: string | null) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+function statusLabel(status: Task["status"]) {
+  if (status === "start") return "start";
+  if (status === "hold_pause") return "hold/pause";
+  return "finish";
 }
 
 export function ProjectClient({ projectId }: { projectId: string }) {
@@ -174,9 +180,9 @@ export function ProjectClient({ projectId }: { projectId: string }) {
 
   const tasksByStatus = useMemo(
     () => ({
-      todo: tasks.filter((task) => task.status === "todo"),
-      in_progress: tasks.filter((task) => task.status === "in_progress"),
-      done: tasks.filter((task) => task.status === "done"),
+      start: tasks.filter((task) => task.status === "start"),
+      hold_pause: tasks.filter((task) => task.status === "hold_pause"),
+      finish: tasks.filter((task) => task.status === "finish"),
     }),
     [tasks],
   );
@@ -539,8 +545,8 @@ export function ProjectClient({ projectId }: { projectId: string }) {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <TaskColumn
-          title="Todo"
-          tasks={tasksByStatus.todo}
+          title="Start"
+          tasks={tasksByStatus.start}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           memberNameById={memberNameById}
@@ -549,8 +555,8 @@ export function ProjectClient({ projectId }: { projectId: string }) {
           onDelete={isAdmin ? deleteTask : undefined}
         />
         <TaskColumn
-          title="In Progress"
-          tasks={tasksByStatus.in_progress}
+          title="Hold/Pause"
+          tasks={tasksByStatus.hold_pause}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           memberNameById={memberNameById}
@@ -559,8 +565,8 @@ export function ProjectClient({ projectId }: { projectId: string }) {
           onDelete={isAdmin ? deleteTask : undefined}
         />
         <TaskColumn
-          title="Done"
-          tasks={tasksByStatus.done}
+          title="Finish"
+          tasks={tasksByStatus.finish}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           memberNameById={memberNameById}
@@ -579,7 +585,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium">{task.title}</span>
                 <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                  {task.status}
+                  {statusLabel(task.status)}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">Due: {task.due_date ?? "none"}</p>
@@ -748,17 +754,17 @@ function TaskColumn({
             </p>
             <p className="mt-2 text-xs text-muted-foreground">Due: {task.due_date ?? "none"}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onStatusChange(task.id, "todo")}>
-                Todo
+              <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onStatusChange(task.id, "start")}>
+                Start
               </button>
               <button
                 className="rounded border border-border px-2 py-1 text-xs"
-                onClick={() => onStatusChange(task.id, "in_progress")}
+                onClick={() => onStatusChange(task.id, "hold_pause")}
               >
-                In progress
+                Hold/Pause
               </button>
-              <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onStatusChange(task.id, "done")}>
-                Done
+              <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onStatusChange(task.id, "finish")}>
+                Finish
               </button>
               {isAdmin || (currentUserId !== null && task.assignee_user_id === currentUserId) ? (
                 <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onEdit(task)}>
