@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type DashboardData = {
   summary: {
@@ -47,21 +49,15 @@ export function DashboardClient() {
 
   useEffect(() => {
     let cancelled = false;
-
     fetch("/api/dashboard", { cache: "no-store" })
       .then(async (response) => {
         const result = (await response.json()) as DashboardData & { error?: string };
-
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         if (!response.ok) {
           setError(result.error ?? "Could not load dashboard");
           setLoading(false);
           return;
         }
-
         setData(result);
         setLoading(false);
       })
@@ -71,7 +67,6 @@ export function DashboardClient() {
           setLoading(false);
         }
       });
-
     return () => {
       cancelled = true;
     };
@@ -119,22 +114,20 @@ export function DashboardClient() {
       <section className="rounded-xl border border-border bg-card p-4">
         <h2 className="text-lg font-semibold">Create project</h2>
         <form className="mt-3 grid gap-3 md:grid-cols-3" onSubmit={onCreateProject}>
-          <input
-            className="rounded-md border border-input bg-background px-3 py-2"
+          <Input
+            className="h-10"
             placeholder="Project name"
             value={newProjectName}
             onChange={(event) => setNewProjectName(event.target.value)}
             required
           />
-          <input
-            className="rounded-md border border-input bg-background px-3 py-2"
+          <Input
+            className="h-10"
             placeholder="Description"
             value={newProjectDescription}
             onChange={(event) => setNewProjectDescription(event.target.value)}
           />
-          <button className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90">
-            Create
-          </button>
+          <Button className="h-10">Create</Button>
         </form>
       </section>
 

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 type Member = {
   user_id: string;
@@ -46,6 +49,7 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRole, setMemberRole] = useState<"admin" | "member">("member");
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
 
   const memberNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -102,7 +106,6 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-
     Promise.all([
       fetch(`/api/projects/${projectId}`, { cache: "no-store" }),
       fetch("/api/projects", { cache: "no-store" }),
@@ -120,7 +123,6 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
         ]);
 
         if (cancelled) return;
-
         if (!projectRes.ok || !projectsRes.ok || !membersRes.ok || !attendanceRes.ok || !meRes.ok) {
           setError(
             projectJson.error ??
@@ -133,11 +135,9 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
           setLoading(false);
           return;
         }
-
         const role = (projectsJson.projects as Array<{ role: "admin" | "member"; project: { id: string } }>).find(
           (item) => item.project.id === projectId,
         )?.role;
-
         setIsAdmin(role === "admin");
         setProject(projectJson.project as ProjectSummary);
         setMembers((membersJson.members ?? []) as Member[]);
@@ -151,7 +151,6 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
           setLoading(false);
         }
       });
-
     return () => {
       cancelled = true;
     };
@@ -251,12 +250,12 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
           Existing users are added directly. Unknown emails receive an invite email.
         </p>
         <form onSubmit={addMember} className="mt-3 grid gap-3 md:grid-cols-3">
-          <input
+          <Input
+            className="h-10 md:col-span-2"
             value={memberEmail}
             onChange={(event) => setMemberEmail(event.target.value)}
             type="email"
             placeholder="member@email.com"
-            className="rounded-md border border-input bg-background px-3 py-2 md:col-span-2"
             required
           />
           <select
@@ -267,9 +266,7 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
             <option value="member">Member</option>
             <option value="admin">Admin</option>
           </select>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 md:col-span-3">
-            Add member
-          </button>
+          <Button className="h-10 md:col-span-3">Add member</Button>
         </form>
         {inviteLink ? (
           <p className="mt-3 rounded-md bg-secondary px-3 py-2 text-sm">
@@ -295,13 +292,14 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
                     <option value="member">member</option>
                     <option value="admin">admin</option>
                   </select>
-                  <button
-                    onClick={() => void removeMember(member.user_id)}
+                  <Button
+                    variant="outline"
+                    onClick={() => setMemberToRemove(member)}
                     disabled={currentUserId === member.user_id}
-                    className="rounded border border-destructive px-2 py-1 text-xs text-destructive disabled:opacity-50"
+                    className="h-7 border-destructive text-xs text-destructive disabled:opacity-50"
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -323,6 +321,32 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
           ))}
         </div>
       </section>
+
+      <Dialog open={Boolean(memberToRemove)} onOpenChange={(open) => !open && setMemberToRemove(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove member</DialogTitle>
+            <DialogDescription>
+              This will remove {memberToRemove?.profiles?.full_name || memberToRemove?.profiles?.email || "this user"} from the project.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMemberToRemove(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!memberToRemove) return;
+                await removeMember(memberToRemove.user_id);
+                setMemberToRemove(null);
+              }}
+            >
+              Confirm remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

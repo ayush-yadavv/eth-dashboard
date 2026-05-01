@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 type Task = {
   id: string;
@@ -69,6 +70,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
   const [myAttendanceLogs, setMyAttendanceLogs] = useState<AttendanceLog[]>([]);
   const [teamAttendanceLogs, setTeamAttendanceLogs] = useState<AttendanceLog[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [statusUpdatingTaskId, setStatusUpdatingTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [taskTitle, setTaskTitle] = useState("");
@@ -145,19 +147,14 @@ export function ProjectClient({ projectId }: { projectId: string }) {
           attendanceRes.json(),
         ]);
 
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         if (!projectRes.ok || !tasksRes.ok || !membersRes.ok || !projectsRes.ok) {
           setError(projectJson.error ?? tasksJson.error ?? membersJson.error ?? projectsJson.error ?? "Could not load project");
           return;
         }
-
         const role = (projectsJson.projects as Array<{ role: "admin" | "member"; project: { id: string } }>).find(
           (item) => item.project.id === projectId,
         )?.role;
-
         setIsAdmin(role === "admin");
         setProject(projectJson.project as ProjectData);
         setTasks((tasksJson.tasks ?? []) as Task[]);
@@ -172,7 +169,6 @@ export function ProjectClient({ projectId }: { projectId: string }) {
           setError("Could not load project");
         }
       });
-
     return () => {
       cancelled = true;
     };
@@ -295,6 +291,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
   }
 
   async function updateTaskStatus(taskId: string, status: Task["status"]) {
+    setStatusUpdatingTaskId(taskId);
     const response = await fetch(`/api/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -303,9 +300,11 @@ export function ProjectClient({ projectId }: { projectId: string }) {
     const result = (await response.json()) as { error?: string };
     if (!response.ok) {
       setError(result.error ?? "Task update failed");
+      setStatusUpdatingTaskId(null);
       return;
     }
     await load();
+    setStatusUpdatingTaskId(null);
   }
 
   async function deleteTask(taskId: string) {
@@ -407,18 +406,18 @@ export function ProjectClient({ projectId }: { projectId: string }) {
                     <DialogDescription>Update project name and description.</DialogDescription>
                   </DialogHeader>
                   <form className="space-y-3" onSubmit={onEditProject}>
-                    <input
+                    <Input
+                      className="h-10 w-full"
                       value={projectNameDraft}
                       onChange={(event) => setProjectNameDraft(event.target.value)}
                       placeholder="Project name"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2"
                       required
                     />
-                    <input
+                    <Input
+                      className="h-10 w-full"
                       value={projectDescriptionDraft}
                       onChange={(event) => setProjectDescriptionDraft(event.target.value)}
                       placeholder="Description"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2"
                     />
                     <DialogFooter>
                       <Button type="submit">Save changes</Button>
@@ -459,11 +458,11 @@ export function ProjectClient({ projectId }: { projectId: string }) {
                   <DialogDescription>Add a task and assign it to a team member.</DialogDescription>
                 </DialogHeader>
                 <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateTask}>
-                  <input
+                  <Input
+                    className="h-10"
                     value={taskTitle}
                     onChange={(event) => setTaskTitle(event.target.value)}
                     placeholder="Task title"
-                    className="rounded-md border border-input bg-background px-3 py-2"
                     required
                   />
                   <select
@@ -478,17 +477,17 @@ export function ProjectClient({ projectId }: { projectId: string }) {
                       </option>
                     ))}
                   </select>
-                  <input
+                  <Input
+                    className="h-10 md:col-span-2"
                     value={taskDescription}
                     onChange={(event) => setTaskDescription(event.target.value)}
                     placeholder="Description"
-                    className="rounded-md border border-input bg-background px-3 py-2 md:col-span-2"
                   />
-                  <input
+                  <Input
+                    className="h-10"
                     type="date"
                     value={taskDueDate}
                     onChange={(event) => setTaskDueDate(event.target.value)}
-                    className="rounded-md border border-input bg-background px-3 py-2"
                   />
                   <DialogFooter className="md:col-span-2">
                     <Button type="submit">Add task</Button>
@@ -507,11 +506,11 @@ export function ProjectClient({ projectId }: { projectId: string }) {
             <DialogDescription>Update task details and assignment.</DialogDescription>
           </DialogHeader>
           <form className="grid gap-3 md:grid-cols-2" onSubmit={onEditTask}>
-            <input
+            <Input
+              className="h-10"
               value={taskTitle}
               onChange={(event) => setTaskTitle(event.target.value)}
               placeholder="Task title"
-              className="rounded-md border border-input bg-background px-3 py-2"
               required
             />
             <select
@@ -526,17 +525,17 @@ export function ProjectClient({ projectId }: { projectId: string }) {
                 </option>
               ))}
             </select>
-            <input
+            <Input
+              className="h-10 md:col-span-2"
               value={taskDescription}
               onChange={(event) => setTaskDescription(event.target.value)}
               placeholder="Description"
-              className="rounded-md border border-input bg-background px-3 py-2 md:col-span-2"
             />
-            <input
+            <Input
+              className="h-10"
               type="date"
               value={taskDueDate}
               onChange={(event) => setTaskDueDate(event.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2"
             />
             <DialogFooter className="md:col-span-2">
               <Button type="submit">Save task</Button>
@@ -553,6 +552,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
           isAdmin={isAdmin}
           memberNameById={memberNameById}
           onStatusChange={updateTaskStatus}
+          statusUpdatingTaskId={statusUpdatingTaskId}
           onEdit={openEditTaskDialog}
           onDelete={isAdmin ? deleteTask : undefined}
         />
@@ -563,6 +563,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
           isAdmin={isAdmin}
           memberNameById={memberNameById}
           onStatusChange={updateTaskStatus}
+          statusUpdatingTaskId={statusUpdatingTaskId}
           onEdit={openEditTaskDialog}
           onDelete={isAdmin ? deleteTask : undefined}
         />
@@ -573,6 +574,7 @@ export function ProjectClient({ projectId }: { projectId: string }) {
           isAdmin={isAdmin}
           memberNameById={memberNameById}
           onStatusChange={updateTaskStatus}
+          statusUpdatingTaskId={statusUpdatingTaskId}
           onEdit={openEditTaskDialog}
           onDelete={isAdmin ? deleteTask : undefined}
         />
@@ -722,6 +724,7 @@ function TaskColumn({
   isAdmin,
   memberNameById,
   onStatusChange,
+  statusUpdatingTaskId,
   onEdit,
   onDelete,
 }: {
@@ -731,6 +734,7 @@ function TaskColumn({
   isAdmin: boolean;
   memberNameById: Map<string, string>;
   onStatusChange: (taskId: string, status: Task["status"]) => Promise<void>;
+  statusUpdatingTaskId: string | null;
   onEdit: (task: Task) => void;
   onDelete?: (taskId: string) => Promise<void>;
 }) {
@@ -756,16 +760,25 @@ function TaskColumn({
             </p>
             <p className="mt-2 text-xs text-muted-foreground">Due: {task.due_date ?? "none"}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onStatusChange(task.id, "start")}>
+              <button
+                disabled={statusUpdatingTaskId === task.id}
+                className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50"
+                onClick={() => onStatusChange(task.id, "start")}
+              >
                 Start
               </button>
               <button
-                className="rounded border border-border px-2 py-1 text-xs"
+                disabled={statusUpdatingTaskId === task.id}
+                className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50"
                 onClick={() => onStatusChange(task.id, "hold_pause")}
               >
                 Hold/Pause
               </button>
-              <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onStatusChange(task.id, "finish")}>
+              <button
+                disabled={statusUpdatingTaskId === task.id}
+                className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50"
+                onClick={() => onStatusChange(task.id, "finish")}
+              >
                 Finish
               </button>
               {isAdmin || (currentUserId !== null && task.assignee_user_id === currentUserId) ? (
