@@ -46,6 +46,8 @@
 }
 
 :root {
+  --font-geist-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: ui-monospace, "SFMono-Regular", monospace;
   --radius: 0.5rem;
   --background: oklch(0.994 0.002 122.248);
   --foreground: oklch(0.15 0.026 122.225);
@@ -82,6 +84,8 @@
 }
 
 .dark {
+  --font-geist-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: ui-monospace, "SFMono-Regular", monospace;
   --radius: 0.5rem;
   --background: oklch(0.144 0.017 121.96);
   --foreground: oklch(0.994 0.002 122.251);

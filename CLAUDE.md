@@ -49,3 +49,15 @@ AI agent instructions for this repository (Cursor, Claude Code, and similar). Ke
 - Production build: `npm run build`
 - Railway start command: `npm run start`
 - Healthcheck path: `/health`
+
+## Local Commands
+
+- Lint: `npm run lint`
+- Test: `npm run test`
+- Build: `npm run build`
+
+## Supabase Migrations
+
+- Team task manager baseline schema: `supabase/migrations/20260501153000_team_task_manager.sql`
+- RLS recursion fix: `supabase/migrations/20260501162000_fix_rls_recursion.sql`
+- Member attendance tracking: `supabase/migrations/20260501173000_member_attendance.sql`

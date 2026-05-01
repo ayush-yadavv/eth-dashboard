@@ -1,48 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Team Task Manager
 
-## Getting Started
+Full-stack Next.js 16 + Supabase MVP for project/task management with role-based access control.
 
-First, run the development server:
+## Features
+
+- Email/password auth (signup/login/logout)
+- Project creation and team membership
+- Admin/member role permissions per project
+- Task creation, assignment, status tracking
+- Dashboard with open/completed/overdue metrics
+- Invite-link flow for pending member invitations
+
+## Environment
+
+Create `.env.local` from `.env.example`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (server only)
+- `SUPABASE_DISABLE_EMAIL_VERIFICATION` (`true` or `false`, default `false`)
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL` (for example `onboarding@resend.dev`)
+- `APP_BASE_URL` (for example `http://localhost:3000`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+If you hit Supabase email rate limits in development, set:
 
-## Learn More
+```env
+SUPABASE_DISABLE_EMAIL_VERIFICATION=true
+```
 
-To learn more about Next.js, take a look at the following resources:
+This creates users with email auto-confirmed via server-side admin API and signs them in without sending verification emails.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Invite emails:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `POST /api/projects/[projectId]/invitations` now sends email through Resend.
+- The email contains the invite link to `${APP_BASE_URL}/invitations/<token>`.
+
+## Database Setup (Supabase SQL Editor)
+
+Run this migration SQL in your Supabase project:
+
+- `supabase/migrations/20260501153000_team_task_manager.sql`
+
+## Run
+
+```bash
+npm install
+npm run dev
+```
+
+App entry points:
+
+- `/login`
+- `/signup`
+- `/dashboard`
+
+## Tests and Checks
+
+```bash
+npm run test
+npm run lint
+npm run build
+```
 
 ## Deploy on Railway
 
-This project includes a checked-in [`railway.json`](./railway.json) for Railway config-as-code.
+This repo includes `railway.json` with:
 
-Railway will:
-
-- build with `npm run build`
-- start the app with `npm run start`
-- check health at `/health`
-
-To deploy from Railway, link the repo or use `railway up` from the project root after logging in.
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Build: `npm run build`
+- Start: `npm run start`
+- Healthcheck: `/health`
