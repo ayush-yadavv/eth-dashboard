@@ -16,6 +16,18 @@ type AttendanceLog = {
   punched_out_at: string | null;
 };
 
+function formatDuration(fromIso: string, toIso: string | null) {
+  const start = new Date(fromIso).getTime();
+  const end = toIso ? new Date(toIso).getTime() : Date.now();
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    return "0m";
+  }
+  const totalMinutes = Math.floor((end - start) / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
 type ProjectSummary = {
   id: string;
   name: string;
@@ -305,7 +317,8 @@ export function ManageUsersClient({ projectId }: { projectId: string }) {
             <div key={log.id} className="rounded-md border border-border bg-background px-3 py-2 text-xs">
               <span className="font-medium">{memberNameById.get(log.user_id) ?? log.user_id}</span> | In:{" "}
               {new Date(log.punched_in_at).toLocaleString()} | Out:{" "}
-              {log.punched_out_at ? new Date(log.punched_out_at).toLocaleString() : "Active"}
+              {log.punched_out_at ? new Date(log.punched_out_at).toLocaleString() : "Active"} | Duration:{" "}
+              {formatDuration(log.punched_in_at, log.punched_out_at)}
             </div>
           ))}
         </div>

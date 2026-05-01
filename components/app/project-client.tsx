@@ -2,6 +2,16 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type Task = {
   id: string;
@@ -31,6 +41,18 @@ type AttendanceLog = {
   punched_out_at: string | null;
 };
 
+function formatDuration(fromIso: string, toIso: string | null) {
+  const start = new Date(fromIso).getTime();
+  const end = toIso ? new Date(toIso).getTime() : Date.now();
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    return "0m";
+  }
+  const totalMinutes = Math.floor((end - start) / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
 export function ProjectClient({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<ProjectData | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -47,6 +69,12 @@ export function ProjectClient({ projectId }: { projectId: string }) {
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDueDate, setTaskDueDate] = useState("");
   const [taskAssignee, setTaskAssignee] = useState("");
+  const [isCreateTaskDialogOpen, setIsCreateTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
+  const [projectNameDraft, setProjectNameDraft] = useState("");
+  const [projectDescriptionDraft, setProjectDescriptionDraft] = useState("");
 
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRole, setMemberRole] = useState<"admin" | "member">("member");
@@ -187,7 +215,77 @@ export function ProjectClient({ projectId }: { projectId: string }) {
     setTaskDescription("");
     setTaskDueDate("");
     setTaskAssignee("");
+    setIsCreateTaskDialogOpen(false);
     await load();
+  }
+
+  async function onEditTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingTask) return;
+    const response = await fetch(`/api/tasks/${editingTask.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: taskTitle,
+        description: taskDescription || null,
+        dueDate: taskDueDate || null,
+        assigneeUserId: taskAssignee || null,
+      }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setError(result.error ?? "Task update failed");
+      return;
+    }
+    setEditingTask(null);
+    setTaskTitle("");
+    setTaskDescription("");
+    setTaskDueDate("");
+    setTaskAssignee("");
+    await load();
+  }
+
+  async function onEditProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: projectNameDraft,
+        description: projectDescriptionDraft || null,
+      }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setError(result.error ?? "Project update failed");
+      return;
+    }
+    setIsEditProjectDialogOpen(false);
+    await load();
+  }
+
+  function openCreateTaskDialog() {
+    setTaskTitle("");
+    setTaskDescription("");
+    setTaskDueDate("");
+    setTaskAssignee("");
+    setEditingTask(null);
+    setIsCreateTaskDialogOpen(true);
+  }
+
+  function openEditTaskDialog(task: Task) {
+    setEditingTask(task);
+    setTaskTitle(task.title);
+    setTaskDescription(task.description ?? "");
+    setTaskDueDate(task.due_date ?? "");
+    setTaskAssignee(task.assignee_user_id ?? "");
+    setIsCreateTaskDialogOpen(false);
+  }
+
+  function openEditProjectDialog() {
+    if (!project) return;
+    setProjectNameDraft(project.name);
+    setProjectDescriptionDraft(project.description ?? "");
   }
 
   async function updateTaskStatus(taskId: string, status: Task["status"]) {
@@ -291,14 +389,47 @@ export function ProjectClient({ projectId }: { projectId: string }) {
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-semibold">{project.name}</h1>
-          {isAdmin ? (
-            <Link
-              href={`/projects/${projectId}/manage-users`}
-              className="rounded-md border border-border bg-secondary px-3 py-1.5 text-sm text-secondary-foreground hover:bg-accent"
-            >
-              Manage Users
-            </Link>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {isAdmin ? (
+              <Dialog open={isEditProjectDialogOpen} onOpenChange={setIsEditProjectDialogOpen}>
+                <DialogTrigger render={<Button variant="outline" size="sm" />} onClick={openEditProjectDialog}>
+                  Edit Project
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Edit project</DialogTitle>
+                    <DialogDescription>Update project name and description.</DialogDescription>
+                  </DialogHeader>
+                  <form className="space-y-3" onSubmit={onEditProject}>
+                    <input
+                      value={projectNameDraft}
+                      onChange={(event) => setProjectNameDraft(event.target.value)}
+                      placeholder="Project name"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2"
+                      required
+                    />
+                    <input
+                      value={projectDescriptionDraft}
+                      onChange={(event) => setProjectDescriptionDraft(event.target.value)}
+                      placeholder="Description"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2"
+                    />
+                    <DialogFooter>
+                      <Button type="submit">Save changes</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            ) : null}
+            {isAdmin ? (
+              <Link
+                href={`/projects/${projectId}/manage-users`}
+                className="rounded-md border border-border bg-secondary px-3 py-1.5 text-sm text-secondary-foreground hover:bg-accent"
+              >
+                Manage Users
+              </Link>
+            ) : null}
+          </div>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{project.description || "No description"}</p>
       </section>
@@ -306,68 +437,135 @@ export function ProjectClient({ projectId }: { projectId: string }) {
       {error ? <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}
 
       <section className="rounded-xl border border-border bg-card p-4">
-        <h2 className="text-lg font-semibold">Create task</h2>
-        <form className="mt-3 grid gap-3 md:grid-cols-2" onSubmit={onCreateTask}>
-          <input
-            value={taskTitle}
-            onChange={(event) => setTaskTitle(event.target.value)}
-            placeholder="Task title"
-            className="rounded-md border border-input bg-background px-3 py-2"
-            required
-          />
-          <select
-            value={taskAssignee}
-            onChange={(event) => setTaskAssignee(event.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2"
-          >
-            <option value="">Unassigned</option>
-            {members.map((member) => (
-              <option key={member.user_id} value={member.user_id}>
-                {member.profiles?.full_name || member.profiles?.email || member.user_id}
-              </option>
-            ))}
-          </select>
-          <input
-            value={taskDescription}
-            onChange={(event) => setTaskDescription(event.target.value)}
-            placeholder="Description"
-            className="rounded-md border border-input bg-background px-3 py-2 md:col-span-2"
-          />
-          <input
-            type="date"
-            value={taskDueDate}
-            onChange={(event) => setTaskDueDate(event.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2"
-          />
-          <button className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90">
-            Add task
-          </button>
-        </form>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Tasks</h2>
+          <Dialog open={isCreateTaskDialogOpen} onOpenChange={setIsCreateTaskDialogOpen}>
+            <DialogTrigger
+              render={<Button />}
+              onClick={openCreateTaskDialog}
+            >
+              Create Task
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Create task</DialogTitle>
+                <DialogDescription>Add a task and assign it to a team member.</DialogDescription>
+              </DialogHeader>
+              <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateTask}>
+                <input
+                  value={taskTitle}
+                  onChange={(event) => setTaskTitle(event.target.value)}
+                  placeholder="Task title"
+                  className="rounded-md border border-input bg-background px-3 py-2"
+                  required
+                />
+                <select
+                  value={taskAssignee}
+                  onChange={(event) => setTaskAssignee(event.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2"
+                >
+                  <option value="">Unassigned</option>
+                  {members.map((member) => (
+                    <option key={member.user_id} value={member.user_id}>
+                      {member.profiles?.full_name || member.profiles?.email || member.user_id}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={taskDescription}
+                  onChange={(event) => setTaskDescription(event.target.value)}
+                  placeholder="Description"
+                  className="rounded-md border border-input bg-background px-3 py-2 md:col-span-2"
+                />
+                <input
+                  type="date"
+                  value={taskDueDate}
+                  onChange={(event) => setTaskDueDate(event.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2"
+                />
+                <DialogFooter className="md:col-span-2">
+                  <Button type="submit">Add task</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </section>
+
+      <Dialog open={Boolean(editingTask)} onOpenChange={(open) => !open && setEditingTask(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit task</DialogTitle>
+            <DialogDescription>Update task details and assignment.</DialogDescription>
+          </DialogHeader>
+          <form className="grid gap-3 md:grid-cols-2" onSubmit={onEditTask}>
+            <input
+              value={taskTitle}
+              onChange={(event) => setTaskTitle(event.target.value)}
+              placeholder="Task title"
+              className="rounded-md border border-input bg-background px-3 py-2"
+              required
+            />
+            <select
+              value={taskAssignee}
+              onChange={(event) => setTaskAssignee(event.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2"
+            >
+              <option value="">Unassigned</option>
+              {members.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {member.profiles?.full_name || member.profiles?.email || member.user_id}
+                </option>
+              ))}
+            </select>
+            <input
+              value={taskDescription}
+              onChange={(event) => setTaskDescription(event.target.value)}
+              placeholder="Description"
+              className="rounded-md border border-input bg-background px-3 py-2 md:col-span-2"
+            />
+            <input
+              type="date"
+              value={taskDueDate}
+              onChange={(event) => setTaskDueDate(event.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2"
+            />
+            <DialogFooter className="md:col-span-2">
+              <Button type="submit">Save task</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <section className="grid gap-4 lg:grid-cols-3">
         <TaskColumn
           title="Todo"
           tasks={tasksByStatus.todo}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
           memberNameById={memberNameById}
           onStatusChange={updateTaskStatus}
+          onEdit={openEditTaskDialog}
           onDelete={isAdmin ? deleteTask : undefined}
         />
         <TaskColumn
           title="In Progress"
           tasks={tasksByStatus.in_progress}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
           memberNameById={memberNameById}
           onStatusChange={updateTaskStatus}
+          onEdit={openEditTaskDialog}
           onDelete={isAdmin ? deleteTask : undefined}
         />
         <TaskColumn
           title="Done"
           tasks={tasksByStatus.done}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
           memberNameById={memberNameById}
           onStatusChange={updateTaskStatus}
+          onEdit={openEditTaskDialog}
           onDelete={isAdmin ? deleteTask : undefined}
         />
       </section>
@@ -449,7 +647,8 @@ export function ProjectClient({ projectId }: { projectId: string }) {
           {myAttendanceLogs.map((log) => (
             <div key={log.id} className="rounded-md border border-border bg-background px-3 py-2 text-xs">
               In: {new Date(log.punched_in_at).toLocaleString()} | Out:{" "}
-              {log.punched_out_at ? new Date(log.punched_out_at).toLocaleString() : "Active"}
+              {log.punched_out_at ? new Date(log.punched_out_at).toLocaleString() : "Active"} | Duration:{" "}
+              {formatDuration(log.punched_in_at, log.punched_out_at)}
             </div>
           ))}
         </div>
@@ -462,7 +661,8 @@ export function ProjectClient({ projectId }: { projectId: string }) {
               <div key={log.id} className="rounded-md border border-border bg-background px-3 py-2 text-xs">
                 <span className="font-medium">{memberNameById.get(log.user_id) ?? log.user_id}</span> | In:{" "}
                 {new Date(log.punched_in_at).toLocaleString()} | Out:{" "}
-                {log.punched_out_at ? new Date(log.punched_out_at).toLocaleString() : "Active"}
+                {log.punched_out_at ? new Date(log.punched_out_at).toLocaleString() : "Active"} | Duration:{" "}
+                {formatDuration(log.punched_in_at, log.punched_out_at)}
               </div>
             ))}
           </div>
@@ -511,15 +711,19 @@ function TaskColumn({
   title,
   tasks,
   currentUserId,
+  isAdmin,
   memberNameById,
   onStatusChange,
+  onEdit,
   onDelete,
 }: {
   title: string;
   tasks: Task[];
   currentUserId: string | null;
+  isAdmin: boolean;
   memberNameById: Map<string, string>;
   onStatusChange: (taskId: string, status: Task["status"]) => Promise<void>;
+  onEdit: (task: Task) => void;
   onDelete?: (taskId: string) => Promise<void>;
 }) {
   return (
@@ -556,6 +760,11 @@ function TaskColumn({
               <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onStatusChange(task.id, "done")}>
                 Done
               </button>
+              {isAdmin || (currentUserId !== null && task.assignee_user_id === currentUserId) ? (
+                <button className="rounded border border-border px-2 py-1 text-xs" onClick={() => onEdit(task)}>
+                  Edit
+                </button>
+              ) : null}
               {onDelete ? (
                 <button className="rounded border border-destructive px-2 py-1 text-xs text-destructive" onClick={() => onDelete(task.id)}>
                   Delete

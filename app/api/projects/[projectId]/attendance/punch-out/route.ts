@@ -41,7 +41,12 @@ export async function POST(_: Request, { params }: Params) {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    return ok({ session: data });
+    const durationSeconds = Math.max(
+      0,
+      Math.floor((new Date(now).getTime() - new Date(existingOpen.punched_in_at).getTime()) / 1000),
+    );
+
+    return ok({ session: data, durationSeconds });
   } catch (error) {
     return handleRouteError(error);
   }
