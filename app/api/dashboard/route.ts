@@ -12,8 +12,12 @@ type DashboardTask = {
   assignee_user_id: string | null;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const requestUrl = new URL(request.url);
+    const projectSearch = requestUrl.searchParams.get("projectSearch")?.trim().toLowerCase() ?? "";
+    const projectPage = Math.max(1, Number(requestUrl.searchParams.get("projectPage") ?? "1") || 1);
+    const projectPageSize = Math.min(50, Math.max(1, Number(requestUrl.searchParams.get("projectPageSize") ?? "8") || 8));
     const { supabase, user } = await requireUser();
 
     const [{ data: memberships, error: membershipError }, { data: tasks, error: taskError }] =
@@ -55,6 +59,12 @@ export async function GET() {
       .slice(0, 8);
 
     const projectSummaries = (memberships ?? []).map((membership) => {
+      const projectRecord = Array.isArray(membership.project) ? membership.project[0] : membership.project;
+      const project = {
+        id: projectRecord?.id ?? membership.project_id,
+        name: projectRecord?.name ?? "Untitled project",
+        description: projectRecord?.description ?? null,
+      };
       const projectTasks = visibleTasks.filter((task) => task.project_id === membership.project_id);
       const done = projectTasks.filter((task) => task.status === "finish").length;
       const total = projectTasks.length;
@@ -63,12 +73,25 @@ export async function GET() {
       return {
         projectId: membership.project_id,
         role: membership.role,
-        project: membership.project,
+        project,
         tasksTotal: total,
         tasksDone: done,
         progress,
       };
     });
+
+    const filteredProjects = projectSearch.length > 0
+      ? projectSummaries.filter((item) => {
+          const name = item.project?.name?.toLowerCase() ?? "";
+          const description = item.project?.description?.toLowerCase() ?? "";
+          return name.includes(projectSearch) || description.includes(projectSearch);
+        })
+      : projectSummaries;
+    const projectsTotal = filteredProjects.length;
+    const projectsTotalPages = Math.max(1, Math.ceil(projectsTotal / projectPageSize));
+    const safeProjectPage = Math.min(projectPage, projectsTotalPages);
+    const projectsFrom = (safeProjectPage - 1) * projectPageSize;
+    const pagedProjects = filteredProjects.slice(projectsFrom, projectsFrom + projectPageSize);
 
     return ok({
       summary: {
@@ -77,7 +100,13 @@ export async function GET() {
         overdueTasks: overdueTasks.length,
         assignedToMe: assignedToMe.length,
       },
-      projects: projectSummaries,
+      projects: pagedProjects,
+      projectsPagination: {
+        page: safeProjectPage,
+        pageSize: projectPageSize,
+        total: projectsTotal,
+        totalPages: projectsTotalPages,
+      },
       overdueTasks,
       dueSoon,
     });

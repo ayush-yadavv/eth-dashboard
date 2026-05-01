@@ -22,6 +22,12 @@ type DashboardData = {
     tasksDone: number;
     progress: number;
   }>;
+  projectsPagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
   overdueTasks: Array<{ id: string; title: string; due_date: string | null; project_id: string }>;
   dueSoon: Array<{ id: string; title: string; due_date: string | null; project_id: string }>;
 };
@@ -30,6 +36,9 @@ export function DashboardClient() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projectSearch, setProjectSearch] = useState("");
+  const [projectPage, setProjectPage] = useState(1);
+  const [projectPageSize] = useState(8);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
   const [isCreateProjectDialogOpen, setIsCreateProjectDialogOpen] = useState(false);
@@ -37,7 +46,12 @@ export function DashboardClient() {
   async function load() {
     setLoading(true);
     setError(null);
-    const response = await fetch("/api/dashboard", { cache: "no-store" });
+    const query = new URLSearchParams({
+      projectSearch: projectSearch.trim(),
+      projectPage: String(projectPage),
+      projectPageSize: String(projectPageSize),
+    });
+    const response = await fetch(`/api/dashboard?${query.toString()}`, { cache: "no-store" });
     const result = (await response.json()) as DashboardData & { error?: string };
 
     if (!response.ok) {
@@ -52,7 +66,12 @@ export function DashboardClient() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/dashboard", { cache: "no-store" })
+    const query = new URLSearchParams({
+      projectSearch: projectSearch.trim(),
+      projectPage: String(projectPage),
+      projectPageSize: String(projectPageSize),
+    });
+    fetch(`/api/dashboard?${query.toString()}`, { cache: "no-store" })
       .then(async (response) => {
         const result = (await response.json()) as DashboardData & { error?: string };
         if (cancelled) return;
@@ -73,7 +92,7 @@ export function DashboardClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [projectSearch, projectPage, projectPageSize]);
 
   async function onCreateProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -148,10 +167,20 @@ export function DashboardClient() {
             </DialogContent>
           </Dialog>
         </div>
-      </section>
-
-      <section className="rounded-xl border border-border bg-card p-4">
-        <h2 className="text-lg font-semibold">Project list</h2>
+        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+          <Input
+            className="h-10"
+            placeholder="Search projects by name or description"
+            value={projectSearch}
+            onChange={(event) => {
+              setProjectPage(1);
+              setProjectSearch(event.target.value);
+            }}
+          />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{data.projectsPagination.total} projects</span>
+          </div>
+        </div>
         <div className="mt-3 space-y-3">
           {data.projects.length === 0 ? <p className="text-sm text-muted-foreground">No projects yet.</p> : null}
           {data.projects.map((item) => (
@@ -173,6 +202,29 @@ export function DashboardClient() {
               </p>
             </Link>
           ))}
+        </div>
+        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            Page {data.projectsPagination.page} / {data.projectsPagination.totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="xs"
+              variant="outline"
+              disabled={data.projectsPagination.page <= 1}
+              onClick={() => setProjectPage((page) => Math.max(1, page - 1))}
+            >
+              Prev
+            </Button>
+            <Button
+              size="xs"
+              variant="outline"
+              disabled={data.projectsPagination.page >= data.projectsPagination.totalPages}
+              onClick={() => setProjectPage((page) => Math.min(data.projectsPagination.totalPages, page + 1))}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </section>
 

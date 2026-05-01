@@ -569,91 +569,6 @@ export function ProjectClient({ projectId }: { projectId: string }) {
 
       {error ? <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}
 
-      <section className="rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Tasks</h2>
-          {isAdmin ? (
-            <Dialog open={isCreateTaskDialogOpen} onOpenChange={setIsCreateTaskDialogOpen}>
-              <DialogTrigger
-                render={<Button />}
-                onClick={openCreateTaskDialog}
-              >
-                Create Task
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Create task</DialogTitle>
-                  <DialogDescription>Add a task and assign it to a team member.</DialogDescription>
-                </DialogHeader>
-                <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateTask}>
-                  <Input
-                    className="h-10"
-                    value={taskTitle}
-                    onChange={(event) => setTaskTitle(event.target.value)}
-                    placeholder="Task title"
-                    required
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button variant="outline" type="button" className="justify-between">
-                          <span>{taskAssignee ? (memberNameById.get(taskAssignee) ?? taskAssignee) : "Unassigned"}</span>
-                          <ChevronDown className="size-4 opacity-70" />
-                        </Button>
-                      }
-                    />
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => setTaskAssignee("")}>Unassigned</DropdownMenuItem>
-                      {members.map((member) => {
-                        const label = member.profiles?.full_name || member.profiles?.email || member.user_id;
-                        const selected = taskAssignee === member.user_id;
-                        return (
-                          <DropdownMenuItem key={member.user_id} onClick={() => setTaskAssignee(member.user_id)}>
-                            <span className="flex-1">{label}</span>
-                            {selected ? <Check className="size-4" /> : null}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Input
-                    className="h-10 md:col-span-2"
-                    value={taskDescription}
-                    onChange={(event) => setTaskDescription(event.target.value)}
-                    placeholder="Description"
-                  />
-                  <Popover>
-                    <PopoverTrigger
-                      render={
-                        <Button variant="outline" type="button" className="h-10 justify-between">
-                          <span>{formatDateLabel(taskDueDate, "Select due date")}</span>
-                          <CalendarIcon className="size-4 opacity-70" />
-                        </Button>
-                      }
-                    />
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={parseDateString(taskDueDate)}
-                        onSelect={(date) => setTaskDueDate(toDateValue(date))}
-                      />
-                      <div className="border-t border-border p-2">
-                        <Button variant="ghost" size="sm" type="button" onClick={() => setTaskDueDate("")}>
-                          Clear
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  <DialogFooter className="md:col-span-2">
-                    <Button type="submit">Add task</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          ) : null}
-        </div>
-      </section>
-
       <Dialog open={Boolean(editingTask)} onOpenChange={(open) => !open && setEditingTask(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -728,8 +643,86 @@ export function ProjectClient({ projectId }: { projectId: string }) {
 
       <section className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Tasks</h2>
-          <p className="text-xs text-muted-foreground">Assigned to me: {assignedToMeCount}</p>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">Tasks</h2>
+            <p className="text-xs text-muted-foreground">Assigned to me: {assignedToMeCount}</p>
+          </div>
+          {isAdmin ? (
+            <Dialog open={isCreateTaskDialogOpen} onOpenChange={setIsCreateTaskDialogOpen}>
+              <DialogTrigger render={<Button />} onClick={openCreateTaskDialog}>
+                Create Task
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Create task</DialogTitle>
+                  <DialogDescription>Add a task and assign it to a team member.</DialogDescription>
+                </DialogHeader>
+                <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateTask}>
+                  <Input
+                    className="h-10"
+                    value={taskTitle}
+                    onChange={(event) => setTaskTitle(event.target.value)}
+                    placeholder="Task title"
+                    required
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button variant="outline" type="button" className="justify-between">
+                          <span>{taskAssignee ? (memberNameById.get(taskAssignee) ?? taskAssignee) : "Unassigned"}</span>
+                          <ChevronDown className="size-4 opacity-70" />
+                        </Button>
+                      }
+                    />
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => setTaskAssignee("")}>Unassigned</DropdownMenuItem>
+                      {members.map((member) => {
+                        const label = member.profiles?.full_name || member.profiles?.email || member.user_id;
+                        const selected = taskAssignee === member.user_id;
+                        return (
+                          <DropdownMenuItem key={member.user_id} onClick={() => setTaskAssignee(member.user_id)}>
+                            <span className="flex-1">{label}</span>
+                            {selected ? <Check className="size-4" /> : null}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Input
+                    className="h-10 md:col-span-2"
+                    value={taskDescription}
+                    onChange={(event) => setTaskDescription(event.target.value)}
+                    placeholder="Description"
+                  />
+                  <Popover>
+                    <PopoverTrigger
+                      render={
+                        <Button variant="outline" type="button" className="h-10 justify-between">
+                          <span>{formatDateLabel(taskDueDate, "Select due date")}</span>
+                          <CalendarIcon className="size-4 opacity-70" />
+                        </Button>
+                      }
+                    />
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={parseDateString(taskDueDate)}
+                        onSelect={(date) => setTaskDueDate(toDateValue(date))}
+                      />
+                      <div className="border-t border-border p-2">
+                        <Button variant="ghost" size="sm" type="button" onClick={() => setTaskDueDate("")}>
+                          Clear
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <DialogFooter className="md:col-span-2">
+                    <Button type="submit">Add task</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          ) : null}
         </div>
         <div className="grid gap-2 md:grid-cols-6">
           <Input
