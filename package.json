@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "postbuild": "node scripts/copy-standalone-assets.mjs",
-    "start": "node .next/standalone/server.js",
+    "start": "next start -p $PORT -H 0.0.0.0",
     "lint": "eslint",
     "test": "vitest run"
   },
